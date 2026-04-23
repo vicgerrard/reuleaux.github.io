@@ -108,6 +108,14 @@
     text-transform: uppercase;
   }
 
+  .clock-tz {
+    font-size: 10px;
+    color: rgba(0,212,255,0.5);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
   .main {
     position: relative;
     z-index: 5;
@@ -481,6 +489,7 @@
   <div class="live-clock">
     <div class="clock-time" id="clockTime">--:--:--</div>
     <div class="clock-date" id="clockDate"></div>
+    <div class="clock-tz">🕐 Москва (UTC+3)</div>
   </div>
 </div>
 
@@ -775,6 +784,10 @@ function getNow() {
   return new Date();
 }
 
+function getMoscowNow() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Moscow' }));
+}
+
 function getHourlySpawns(boss, now) {
   const times = [];
   for (let h = boss.startHour; h < 24; h += boss.interval) {
@@ -914,7 +927,7 @@ function filterBosses(type, btn) {
 }
 
 function updateAllCards() {
-  const now = getNow();
+  const now = getMoscowNow();
   let earliest = { sec: Infinity, name: '', zone: '' };
 
   BOSSES.forEach(boss => {
@@ -1032,14 +1045,14 @@ function updateAllCards() {
 }
 
 function updateClock() {
-  const now = getNow();
+  const msk = getMoscowNow();
   document.getElementById('clockTime').textContent =
-    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    `${pad(msk.getHours())}:${pad(msk.getMinutes())}:${pad(msk.getSeconds())}`;
   document.getElementById('clockDate').textContent =
-    now.toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    msk.toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
 
   // Highlight today in schedule bar
-  const today = now.getDay();
+  const today = msk.getDay();
   document.querySelectorAll('.day-chip').forEach(chip => {
     chip.classList.toggle('today', parseInt(chip.dataset.day) === today);
   });
