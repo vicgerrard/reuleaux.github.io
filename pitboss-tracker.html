@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Пит-Боссы — RF Reuleaux</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c14;
+    --panel: #0d1520;
+    --panel2: #111d2e;
+    --border: #1e3050;
+    --accent: #e8a020;
+    --accent2: #ff6b35;
+    --cyan: #00d4ff;
+    --green: #00ff88;
+    --red: #ff3d5a;
+    --purple: #9b59ff;
+    --text: #c8ddef;
+    --muted: #4a6880;
+    --glow: 0 0 20px rgba(232,160,32,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .header {
+    position: relative;
+    z-index: 10;
+    padding: 28px 40px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(13,21,32,0.98) 0%, rgba(8,12,20,0.8) 100%);
+    backdrop-filter: blur(10px);
+  }
+
+  .header-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 0 30px rgba(232,160,32,0.4);
+    flex-shrink: 0;
+  }
+
+  .header-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #fff;
+  }
+
+  .header-title span {
+    color: var(--accent);
+  }
+
+  .header-sub {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .live-clock {
+    margin-left: auto;
+    text-align: right;
+  }
+
+  .clock-time {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--cyan);
+    text-shadow: 0 0 20px rgba(0,212,255,0.5);
+    letter-spacing: 3px;
+  }
+
+  .clock-date {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .main {
+    position: relative;
+    z-index: 5;
+    padding: 30px 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* Schedule banner */
+  .schedule-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 30px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .schedule-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-right: 8px;
+  }
+
+  .day-chip {
+    padding: 5px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    cursor: default;
+    transition: all 0.2s;
+  }
+
+  .day-chip.малый { background: rgba(155,89,255,0.15); border-color: rgba(155,89,255,0.4); color: var(--purple); }
+  .day-chip.средний { background: rgba(0,212,255,0.12); border-color: rgba(0,212,255,0.4); color: var(--cyan); }
+  .day-chip.большой { background: rgba(232,160,32,0.12); border-color: rgba(232,160,32,0.4); color: var(--accent); }
+  .day-chip.none { background: rgba(255,255,255,0.04); border-color: var(--border); color: var(--muted); }
+  .day-chip.today { box-shadow: 0 0 16px currentColor; transform: scale(1.05); }
+
+  /* Section tabs */
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .tab {
+    padding: 8px 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Exo 2', sans-serif;
+    letter-spacing: 0.5px;
+  }
+
+  .tab:hover { border-color: var(--accent); color: var(--text); }
+  .tab.active { background: rgba(232,160,32,0.12); border-color: var(--accent); color: var(--accent); }
+
+  /* Boss grid */
+  .boss-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+
+  .boss-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .boss-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-accent, var(--accent));
+    opacity: 0.6;
+  }
+
+  .boss-card:hover {
+    border-color: var(--card-accent, var(--accent));
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+
+  .boss-card.spawning {
+    border-color: var(--green);
+    box-shadow: 0 0 20px rgba(0,255,136,0.2);
+    animation: pulse 2s infinite;
+  }
+
+  .boss-card.spawning::before { background: var(--green); opacity: 1; }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(0,255,136,0.2); }
+    50% { box-shadow: 0 0 35px rgba(0,255,136,0.4); }
+  }
+
+  .boss-header {
+    padding: 16px 18px 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .boss-emoji {
+    width: 44px; height: 44px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+
+  .boss-info { flex: 1; min-width: 0; }
+
+  .boss-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+    margin-bottom: 3px;
+  }
+
+  .boss-zone {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+
+  .boss-status {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .status-active { background: rgba(0,255,136,0.15); color: var(--green); border: 1px solid rgba(0,255,136,0.4); }
+  .status-waiting { background: rgba(0,212,255,0.1); color: var(--cyan); border: 1px solid rgba(0,212,255,0.3); }
+  .status-locked { background: rgba(255,255,255,0.05); color: var(--muted); border: 1px solid var(--border); }
+  .status-soon { background: rgba(255,107,53,0.15); color: var(--accent2); border: 1px solid rgba(255,107,53,0.4); }
+
+  .boss-timer-section {
+    padding: 0 18px 14px;
+  }
+
+  .timer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .timer-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+
+  .timer-value {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--cyan);
+    letter-spacing: 2px;
+  }
+
+  .timer-value.green { color: var(--green); }
+  .timer-value.orange { color: var(--accent2); }
+  .timer-value.muted { color: var(--muted); font-size: 14px; }
+
+  .progress-bar {
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s linear;
+    background: linear-gradient(90deg, var(--fill-start, var(--cyan)), var(--fill-end, var(--purple)));
+  }
+
+  .spawn-times {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+
+  .time-badge {
+    padding: 3px 9px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .time-badge.next {
+    background: rgba(0,212,255,0.12);
+    border-color: rgba(0,212,255,0.4);
+    color: var(--cyan);
+  }
+
+  .boss-loot {
+    padding: 12px 18px 16px;
+    border-top: 1px solid var(--border);
+  }
+
+  .loot-title {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+  }
+
+  .loot-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .loot-tag {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text);
+  }
+
+  .loot-tag.key { background: rgba(155,89,255,0.1); border-color: rgba(155,89,255,0.3); color: var(--purple); }
+  .loot-tag.gear { background: rgba(232,160,32,0.08); border-color: rgba(232,160,32,0.25); color: var(--accent); }
+  .loot-tag.special { background: rgba(255,61,90,0.08); border-color: rgba(255,61,90,0.25); color: var(--red); }
+
+  .resp-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 6px;
+  }
+
+  .resp-4h { background: rgba(0,255,136,0.1); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+  .resp-6h { background: rgba(0,212,255,0.1); color: var(--cyan); border: 1px solid rgba(0,212,255,0.3); }
+  .resp-sched { background: rgba(232,160,32,0.1); color: var(--accent); border: 1px solid rgba(232,160,32,0.3); }
+  .resp-big { background: rgba(255,61,90,0.1); color: var(--red); border: 1px solid rgba(255,61,90,0.3); }
+
+  /* Next boss alert */
+  .next-boss-bar {
+    background: linear-gradient(135deg, rgba(232,160,32,0.08), rgba(255,107,53,0.08));
+    border: 1px solid rgba(232,160,32,0.3);
+    border-radius: 12px;
+    padding: 14px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .next-label {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+
+  .next-boss-name {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .next-countdown {
+    margin-left: auto;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-shadow: var(--glow);
+  }
+
+  .hidden { display: none !important; }
+
+  /* Filter row */
+  .filter-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .filter-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .filter-btn {
+    padding: 5px 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Exo 2', sans-serif;
+  }
+
+  .filter-btn:hover, .filter-btn.active { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,0.08); }
+
+  @media (max-width: 600px) {
+    .header { padding: 16px 20px; }
+    .main { padding: 20px 16px; }
+    .boss-grid { grid-template-columns: 1fr; }
+    .clock-time { font-size: 22px; }
+    .header-title { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">☠</div>
+  <div>
+    <div class="header-title">Пит-<span>Боссы</span></div>
+    <div class="header-sub">RF Reuleaux — Трекер Гильдии</div>
+  </div>
+  <div class="live-clock">
+    <div class="clock-time" id="clockTime">--:--:--</div>
+    <div class="clock-date" id="clockDate"></div>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="schedule-bar">
+    <span class="schedule-label">Расписание 20:00</span>
+    <span class="day-chip none" data-day="1">Пн — </span>
+    <span class="day-chip средний" data-day="2">Вт — Средний</span>
+    <span class="day-chip none" data-day="3">Ср — </span>
+    <span class="day-chip малый" data-day="4">Чт — Малый</span>
+    <span class="day-chip none" data-day="5">Пт — </span>
+    <span class="day-chip большой" data-day="6">Сб — Большой</span>
+    <span class="day-chip малый" data-day="0">Вс — Малый</span>
+  </div>
+
+  <div id="nextBossBar" class="next-boss-bar hidden">
+    <div class="next-label">⚡ Следующий</div>
+    <div>
+      <div class="next-boss-name" id="nextBossName"></div>
+      <div style="font-size:11px;color:var(--muted)" id="nextBossZone"></div>
+    </div>
+    <div class="next-countdown" id="nextCountdown"></div>
+  </div>
+
+  <div class="filter-row">
+    <span class="filter-label">Фильтр:</span>
+    <button class="filter-btn active" onclick="filterBosses('all', this)">Все</button>
+    <button class="filter-btn" onclick="filterBosses('hourly', this)">Каждые 4-6ч</button>
+    <button class="filter-btn" onclick="filterBosses('weekly', this)">По расписанию</button>
+    <button class="filter-btn" onclick="filterBosses('active', this)">🟢 Активные</button>
+  </div>
+
+  <div class="boss-grid" id="bossGrid"></div>
+</div>
+
+<script>
+const BOSSES = [
+  {
+    id: 'genshtab',
+    name: 'Пит-Боссы',
+    zone: 'Генштабов',
+    emoji: '🏛',
+    type: 'hourly',
+    interval: 4,
+    startHour: 0,
+    color: '#00ff88',
+    loot: ['Талики всех видов','Камни Т3','Обычная бижутерия','Полированный Кристалл','Броня 43/45 Тип-Б','Оружие 45 Тип-А/Б','Стихийная бижутерия 1GR'],
+    lootTypes: ['base','base','base','base','gear','gear','key'],
+  },
+  {
+    id: 'zastava',
+    name: 'Пит-Боссы',
+    zone: 'Заставы',
+    emoji: '🏰',
+    type: 'hourly',
+    interval: 4,
+    startHour: 0,
+    color: '#00ff88',
+    loot: ['Талики всех видов','Камни Т3','Обычная бижутерия','Броня 47 Тип-Б','Оружие 50 Тип-Б','Щиты 47 Тип-А','Стихийная бижутерия 1-2GR','Сломанный Генератор'],
+    lootTypes: ['base','base','base','gear','gear','gear','key','special'],
+  },
+  {
+    id: 'varassa',
+    name: 'Варасса',
+    zone: 'Заставы',
+    emoji: '🦂',
+    type: 'hourly',
+    interval: 4,
+    startHour: 0,
+    color: '#00d4ff',
+    loot: ['Талики всех видов','Камни Т3','Обычная бижутерия','Броня 47/50 Тип-Б','Оружие 50 Тип-Б','Щиты 47/50 Тип-А','Стихийная бижутерия 1-2GR','Сломанный Генератор'],
+    lootTypes: ['base','base','base','gear','gear','gear','key','special'],
+  },
+  {
+    id: 'droid',
+    name: 'Дроид Страйкер',
+    zone: 'Сетовая Пустыня',
+    emoji: '🤖',
+    type: 'hourly',
+    interval: 6,
+    startHour: 0,
+    color: '#00d4ff',
+    loot: ['Талики всех видов','Обычная бижутерия','Граненный Кристалл','Ключ в Малую Цитадель 3GR','Броня 50 Тип-Б','Оружие 50 Тип-Б/С','Щиты 50 Тип-А','Стихийная бижутерия 1-2GR'],
+    lootTypes: ['base','base','base','key','gear','gear','gear','key'],
+  },
+  {
+    id: 'ghost',
+    name: 'Доспех-Призрак',
+    zone: 'Сетовая Пустыня',
+    emoji: '👻',
+    type: 'hourly',
+    interval: 6,
+    startHour: 0,
+    color: '#9b59ff',
+    loot: ['Ключ в Малую Цитадель 1GR','Ключ в Малую Цитадель 2GR','Граненный Кристалл'],
+    lootTypes: ['key','key','base'],
+  },
+  {
+    id: 'quake',
+    name: 'Сотрясатель',
+    zone: 'Краговые Шахты',
+    emoji: '⛏',
+    type: 'hourly',
+    interval: 6,
+    startHour: 0,
+    color: '#ff6b35',
+    loot: ['Талики всех видов','Обычная бижутерия','Граненный Кристалл','Ключ в Малую Цитадель 3GR','Броня 50 Тип-Б','Оружие 50 Тип-Б/С','Щиты 50 Тип-А','Стихийная бижутерия 1-2GR'],
+    lootTypes: ['base','base','base','key','gear','gear','gear','key'],
+  },
+  {
+    id: 'kaliana',
+    name: 'Калиана Принцесса',
+    zone: 'Этер',
+    emoji: '👸',
+    type: 'hourly',
+    interval: 6,
+    startHour: 0,
+    color: '#ff3d5a',
+    loot: ['Талики всех видов','Обычная бижутерия','Граненный Кристалл','Ключ в Малую Цитадель 3GR','Броня 50 Тип-Б','Оружие 50 Тип-Б/С','Стихийная бижутерия 1-2GR'],
+    lootTypes: ['base','base','base','key','gear','gear','key'],
+  },
+  {
+    id: 'belfeg',
+    name: 'Бельфегор',
+    zone: 'Вулкан',
+    emoji: '🌋',
+    type: 'hourly',
+    interval: 6,
+    startHour: 0,
+    color: '#ff6b35',
+    loot: ['Талики всех видов','Обычная бижутерия','Граненный Кристалл','Ключ в Малую Цитадель 3GR','Броня 50 Тип-Б','Оружие 50 Тип-Б/С','Стихийная бижутерия 1-2GR'],
+    lootTypes: ['base','base','base','key','gear','gear','key'],
+  },
+  // Weekly - Малый/Средний/Большой
+  {
+    id: 'elan1',
+    name: 'Каменолицый, Акулоящер, Ослепитель',
+    zone: 'Элан',
+    emoji: '🗿',
+    type: 'weekly',
+    scheduleType: 'all', // вт,чт,сб,вс
+    days: [2,4,6,0],
+    spawnHour: 20,
+    availableFrom: '2026-05-05',
+    color: '#9b59ff',
+    loot: ['Кристальная Талика','Ключ в Малую Цитадель 4GR','Элан оружие 45-47','Броня 47(50) Тип-С','Стихийная бижутерия 3GR','Части Душ'],
+    lootTypes: ['base','key','gear','gear','key','special'],
+  },
+  {
+    id: 'elan2',
+    name: 'Королева Синдера, Королева Калиана',
+    zone: 'Элан',
+    emoji: '👑',
+    type: 'weekly',
+    scheduleType: 'all',
+    days: [2,4,6,0],
+    spawnHour: 20,
+    availableFrom: '2026-05-05',
+    color: '#ff3d5a',
+    loot: ['Кристальная Талика','Ключ в Малую Цитадель 4GR','Элан оружие 48-49','Броня Palmas 50','Стихийная бижутерия 3GR','Части Душ'],
+    lootTypes: ['base','key','gear','gear','key','special'],
+  },
+  {
+    id: 'dagon',
+    name: 'Дагон, Даган, Дагну',
+    zone: 'Элан',
+    emoji: '🐉',
+    type: 'weekly',
+    scheduleType: 'mid',
+    days: [2,6],
+    spawnHour: 20,
+    availableFrom: '2026-05-09',
+    color: '#e8a020',
+    loot: ['Кристальная Талика','Ключ Тер. Войны 50-65','Броня 53 Тип-Б','Элан оружие 50-52','Стихийная бижутерия 4GR','Слиток Виридия','Амулет/Кольцо Дагона'],
+    lootTypes: ['base','key','gear','gear','key','special','special'],
+  },
+  {
+    id: 'aizen',
+    name: 'Айзен',
+    zone: 'Лаборатория',
+    emoji: '⚗️',
+    type: 'weekly',
+    scheduleType: 'mid',
+    days: [2,6],
+    spawnHour: 20,
+    availableFrom: '2026-05-09',
+    color: '#00d4ff',
+    loot: ['Кристальная Талика','Ключ Тер. Войны 50-65','Броня 53 Тип-Б','Оружие 50 Леона','Бижутерия Кхана','Слиток Виридия'],
+    lootTypes: ['base','key','gear','gear','special','special'],
+  },
+  {
+    id: 'tor',
+    name: 'Тор',
+    zone: 'Лаборатория',
+    emoji: '⚡',
+    type: 'weekly',
+    scheduleType: 'mid',
+    days: [2,6],
+    spawnHour: 20,
+    availableFrom: '2026-05-09',
+    color: '#00d4ff',
+    loot: ['Кристальная Талика','Ключ Тер. Войны 50-65','Броня 53 Тип-Б','Оружие 50 Леона','Бижутерия Кхана','Слиток Виридия'],
+    lootTypes: ['base','key','gear','gear','special','special'],
+  },
+  {
+    id: 'dragon',
+    name: 'Первозданный Псевдодракон',
+    zone: 'Горы Чудовищ',
+    emoji: '🐲',
+    type: 'weekly',
+    scheduleType: 'mid',
+    days: [2,6],
+    spawnHour: 20,
+    availableFrom: '2026-05-09',
+    color: '#ff6b35',
+    loot: ['Ключ Тер. Войны 50-65','Ключ Большой Цитадели 1GR','Бижутерия Чудовища 1-3GR','Осколок Редкой Бижутерии','Слиток Виридия'],
+    lootTypes: ['key','key','special','special','special'],
+  },
+  {
+    id: 'elephant',
+    name: 'Элефант',
+    zone: 'Хранилище',
+    emoji: '🐘',
+    type: 'weekly',
+    scheduleType: 'mid',
+    days: [2,6],
+    spawnHour: 20,
+    availableFrom: '2026-05-12',
+    color: '#9b59ff',
+    loot: ['Ключ Тер. Войны 52-65','Ключ Большой Цитадели 2GR','Броня 55 Тип-Б/С','Оружие 55 Тип-Б/С','Чип Геродиан','Неопознанный Алтарь'],
+    lootTypes: ['key','key','gear','gear','special','special'],
+  },
+  {
+    id: 'cultist',
+    name: 'Культист Кровавый Топор',
+    zone: 'Земли Изгнанников',
+    emoji: '🪓',
+    type: 'weekly',
+    scheduleType: 'mid',
+    days: [2,6],
+    spawnHour: 20,
+    availableFrom: '2026-05-16',
+    color: '#ff3d5a',
+    loot: ['Ключ Тер. Войны 50-65','Ключ Большой Цитадели 3GR','Бижутерия Чудовища 1-3GR','Осколок Редкой Бижутерии','Слиток Титана'],
+    lootTypes: ['key','key','special','special','special'],
+  },
+  {
+    id: 'sealed1',
+    name: 'Запечатанные ПБ (Кукольный Мир / Мир Ночных Кошмаров / Мир Возмездия)',
+    zone: 'Застава-213 / Укрепление Солус / Колония Нумерус',
+    emoji: '🔒',
+    type: 'weekly',
+    scheduleType: 'big',
+    days: [6],
+    spawnHour: 20,
+    availableFrom: '2026-05-23',
+    color: '#ff3d5a',
+    loot: ['Оружие 55 Тип-Б/С','Броня 55 Тип-Б/С','Ключ Большой Цитадели 2GR','Золотой Слиток','Чип Геродиан','Осколок Запечатанной Души (вход)'],
+    lootTypes: ['gear','gear','key','special','special','special'],
+  },
+  {
+    id: 'sealed2',
+    name: 'Запечатанные ПБ (Мир Скорби / Мир Первозданного Огня / Мир Иллюзий)',
+    zone: 'Сетовая Пустыня / Вулкан / Этер',
+    emoji: '🔐',
+    type: 'weekly',
+    scheduleType: 'big',
+    days: [6],
+    spawnHour: 20,
+    availableFrom: '2026-05-30',
+    color: '#9b59ff',
+    loot: ['Оружие 55 Тип-Б','Элан оружие 53-54','Броня 57 Тип-Б','Ключ Большой Цитадели 3GR','Слиток Титана','Осколок Запечатанной Души (вход)'],
+    lootTypes: ['gear','gear','gear','key','special','special'],
+  },
+];
+
+const DAYS_RU = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+const DAYS_FULL_RU = ['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'];
+
+function pad(n) { return String(n).padStart(2,'0'); }
+function fmtTime(h, m=0) { return `${pad(h)}:${pad(m)}`; }
+function fmtCountdown(secs) {
+  if (secs < 0) secs = 0;
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+function getNow() {
+  return new Date();
+}
+
+function getHourlySpawns(boss, now) {
+  const times = [];
+  for (let h = boss.startHour; h < 24; h += boss.interval) {
+    times.push(h);
+  }
+  return times;
+}
+
+// Returns seconds until next spawn (or -1 if currently in window)
+function getHourlyNextSpawn(boss, now) {
+  const nowH = now.getHours();
+  const nowM = now.getMinutes();
+  const nowS = now.getSeconds();
+  const nowTotalSec = nowH * 3600 + nowM * 60 + nowS;
+  
+  const spawns = getHourlySpawns(boss, now);
+  let nextSpawnSec = null;
+
+  // Find next spawn today
+  for (const h of spawns) {
+    const spawnSec = h * 3600;
+    if (spawnSec > nowTotalSec) {
+      nextSpawnSec = spawnSec - nowTotalSec;
+      break;
+    }
+  }
+
+  // If none found today, first spawn tomorrow
+  if (nextSpawnSec === null) {
+    nextSpawnSec = (24 * 3600) - nowTotalSec + spawns[0] * 3600;
+  }
+
+  // Check if currently at spawn (within 1 min window)
+  const lastSpawnSec = spawns.reduce((acc, h) => {
+    const s = h * 3600;
+    return s <= nowTotalSec ? s : acc;
+  }, -1);
+
+  const sinceLastSpawn = lastSpawnSec >= 0 ? nowTotalSec - lastSpawnSec : -1;
+
+  return { nextSec: nextSpawnSec, sinceLastSpawn, spawns };
+}
+
+function getWeeklyNextSpawn(boss, now) {
+  const today = now.getDay();
+  const nowH = now.getHours();
+  const nowM = now.getMinutes();
+  const nowS = now.getSeconds();
+  const nowTotalSec = nowH * 3600 + nowM * 60 + nowS;
+  const spawnSec = boss.spawnHour * 3600;
+
+  // Check if available
+  const avail = new Date(boss.availableFrom);
+  const isAvailable = now >= avail;
+  
+  // Find next spawn day
+  for (let d = 0; d < 8; d++) {
+    const checkDay = (today + d) % 7;
+    if (boss.days.includes(checkDay)) {
+      if (d === 0) {
+        // Today — has it already spawned?
+        if (spawnSec > nowTotalSec) {
+          return { nextSec: spawnSec - nowTotalSec, nextDay: DAYS_FULL_RU[checkDay], isActive: false, isAvailable };
+        } else if (nowTotalSec - spawnSec < 60 * 30) {
+          // Within 30 min window = active
+          return { nextSec: 0, nextDay: DAYS_FULL_RU[checkDay], isActive: true, isAvailable };
+        }
+      } else {
+        const secsToMidnight = (24 - nowH) * 3600 - nowM * 60 - nowS;
+        const secsToDawn = d > 1 ? secsToMidnight + (d - 1) * 86400 : secsToMidnight;
+        const totalSecs = secsToDawn + spawnSec;
+        return { nextSec: totalSecs, nextDay: DAYS_FULL_RU[checkDay], isActive: false, isAvailable };
+      }
+    }
+  }
+  return { nextSec: 999999, nextDay: '—', isActive: false, isAvailable };
+}
+
+function getRespTypeBadge(boss) {
+  if (boss.type === 'hourly') {
+    return `<span class="resp-type-badge resp-${boss.interval}h">🔄 Каждые ${boss.interval}ч</span>`;
+  }
+  const schedMap = { all:'Мал/Ср/Бол', mid:'Ср/Большой', big:'Только Большой' };
+  return `<span class="resp-type-badge resp-sched">📅 ${schedMap[boss.scheduleType]}</span>`;
+}
+
+function getLootClass(t) {
+  if (t === 'key') return 'key';
+  if (t === 'gear') return 'gear';
+  if (t === 'special') return 'special';
+  return '';
+}
+
+function buildCard(boss) {
+  const div = document.createElement('div');
+  div.className = 'boss-card';
+  div.id = `card-${boss.id}`;
+  div.style.setProperty('--card-accent', boss.color);
+  
+  const lootHtml = boss.loot.map((l, i) =>
+    `<span class="loot-tag ${getLootClass(boss.lootTypes[i])}">${l}</span>`
+  ).join('');
+
+  div.innerHTML = `
+    <div class="boss-header">
+      <div class="boss-emoji">${boss.emoji}</div>
+      <div class="boss-info">
+        <div class="boss-name">${boss.name}</div>
+        <div class="boss-zone">📍 ${boss.zone}</div>
+      </div>
+      <div class="boss-status" id="status-${boss.id}">...</div>
+    </div>
+    <div class="boss-timer-section">
+      ${getRespTypeBadge(boss)}
+      <div class="timer-row">
+        <span class="timer-label" id="tlabel-${boss.id}">До респауна</span>
+        <span class="timer-value" id="timer-${boss.id}">--:--:--</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="prog-${boss.id}" style="width:0%"></div></div>
+      <div class="spawn-times" id="spawntimes-${boss.id}"></div>
+    </div>
+    <div class="boss-loot">
+      <div class="loot-title">🎁 Дроп</div>
+      <div class="loot-tags">${lootHtml}</div>
+    </div>
+  `;
+  return div;
+}
+
+let currentFilter = 'all';
+
+function filterBosses(type, btn) {
+  currentFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  updateAllCards();
+}
+
+function updateAllCards() {
+  const now = getNow();
+  let earliest = { sec: Infinity, name: '', zone: '' };
+
+  BOSSES.forEach(boss => {
+    const card = document.getElementById(`card-${boss.id}`);
+    if (!card) return;
+
+    let show = true;
+    if (currentFilter === 'hourly' && boss.type !== 'hourly') show = false;
+    if (currentFilter === 'weekly' && boss.type !== 'weekly') show = false;
+
+    let isActive = false;
+
+    if (boss.type === 'hourly') {
+      const { nextSec, sinceLastSpawn, spawns } = getHourlyNextSpawn(boss, now);
+      const isSpawning = sinceLastSpawn >= 0 && sinceLastSpawn < 60;
+      isActive = isSpawning;
+
+      const timerEl = document.getElementById(`timer-${boss.id}`);
+      const progEl = document.getElementById(`prog-${boss.id}`);
+      const statusEl = document.getElementById(`status-${boss.id}`);
+      const stEl = document.getElementById(`spawntimes-${boss.id}`);
+
+      card.classList.toggle('spawning', isSpawning);
+
+      const totalSec = boss.interval * 3600;
+      const progress = isSpawning ? 100 : Math.max(0, 100 - (nextSec / totalSec * 100));
+
+      progEl.style.width = progress + '%';
+      progEl.style.setProperty('--fill-start', boss.color);
+      progEl.style.setProperty('--fill-end', '#9b59ff');
+
+      if (isSpawning) {
+        timerEl.textContent = '🟢 РЕСП!';
+        timerEl.className = 'timer-value green';
+        statusEl.textContent = 'Активен';
+        statusEl.className = 'boss-status status-active';
+      } else {
+        timerEl.textContent = fmtCountdown(nextSec);
+        timerEl.className = nextSec < 3600 ? 'timer-value orange' : 'timer-value';
+        statusEl.textContent = nextSec < 3600 ? 'Скоро' : 'Ожидание';
+        statusEl.className = nextSec < 3600 ? 'boss-status status-soon' : 'boss-status status-waiting';
+
+        if (nextSec < earliest.sec) {
+          earliest = { sec: nextSec, name: boss.name, zone: boss.zone };
+        }
+      }
+
+      // Spawn times
+      const nowH = now.getHours();
+      stEl.innerHTML = spawns.map(h => {
+        const isNext = spawns.find(s => s > nowH) === h;
+        return `<span class="time-badge ${isNext ? 'next' : ''}">${fmtTime(h)}</span>`;
+      }).join('');
+    } else {
+      // Weekly
+      const { nextSec, nextDay, isActive: wActive, isAvailable } = getWeeklyNextSpawn(boss, now);
+      isActive = wActive;
+
+      const timerEl = document.getElementById(`timer-${boss.id}`);
+      const statusEl = document.getElementById(`status-${boss.id}`);
+      const stEl = document.getElementById(`spawntimes-${boss.id}`);
+      const progEl = document.getElementById(`prog-${boss.id}`);
+
+      card.classList.toggle('spawning', wActive && isAvailable);
+
+      if (!isAvailable) {
+        const avDate = new Date(boss.availableFrom).toLocaleDateString('ru-RU', { day:'numeric', month:'long' });
+        timerEl.textContent = `Откр. ${avDate}`;
+        timerEl.className = 'timer-value muted';
+        statusEl.textContent = 'Заблок.';
+        statusEl.className = 'boss-status status-locked';
+        progEl.style.width = '0%';
+        stEl.innerHTML = `<span class="time-badge">Доступно с ${avDate}</span>`;
+      } else if (wActive) {
+        timerEl.textContent = '🟢 СЕЙЧАС!';
+        timerEl.className = 'timer-value green';
+        statusEl.textContent = 'Активен';
+        statusEl.className = 'boss-status status-active';
+        progEl.style.width = '100%';
+        stEl.innerHTML = `<span class="time-badge next">Сейчас — 20:00</span>`;
+      } else {
+        timerEl.textContent = fmtCountdown(nextSec);
+        timerEl.className = nextSec < 3600 ? 'timer-value orange' : 'timer-value';
+        statusEl.textContent = nextSec < 86400 ? 'Сегодня' : nextDay;
+        statusEl.className = nextSec < 3600 ? 'boss-status status-soon' : 'boss-status status-waiting';
+        progEl.style.width = '20%';
+        progEl.style.setProperty('--fill-start', boss.color);
+
+        const daysHtml = boss.days.map(d => {
+          const isToday = d === now.getDay();
+          return `<span class="time-badge ${isToday ? 'next' : ''}">${DAYS_RU[d]} 20:00</span>`;
+        }).join('');
+        stEl.innerHTML = daysHtml;
+
+        if (nextSec < earliest.sec) {
+          earliest = { sec: nextSec, name: boss.name, zone: boss.zone };
+        }
+      }
+    }
+
+    // Filter: active only
+    if (currentFilter === 'active' && !isActive) show = false;
+    card.classList.toggle('hidden', !show);
+  });
+
+  // Next boss bar
+  if (earliest.sec < Infinity && currentFilter !== 'active') {
+    document.getElementById('nextBossBar').classList.remove('hidden');
+    document.getElementById('nextBossName').textContent = earliest.name;
+    document.getElementById('nextBossZone').textContent = earliest.zone;
+    document.getElementById('nextCountdown').textContent = fmtCountdown(earliest.sec);
+  } else {
+    document.getElementById('nextBossBar').classList.add('hidden');
+  }
+}
+
+function updateClock() {
+  const now = getNow();
+  document.getElementById('clockTime').textContent =
+    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  document.getElementById('clockDate').textContent =
+    now.toLocaleDateString('ru-RU', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  // Highlight today in schedule bar
+  const today = now.getDay();
+  document.querySelectorAll('.day-chip').forEach(chip => {
+    chip.classList.toggle('today', parseInt(chip.dataset.day) === today);
+  });
+}
+
+// Build cards
+const grid = document.getElementById('bossGrid');
+BOSSES.forEach(boss => grid.appendChild(buildCard(boss)));
+
+// Tick
+updateClock();
+updateAllCards();
+setInterval(() => {
+  updateClock();
+  updateAllCards();
+}, 1000);
+</script>
+</body>
+</html>
